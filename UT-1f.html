@@ -1318,6 +1318,27 @@
         </div>
       </section>
 
+      <!-- API Keys -->
+      <section>
+        <div class="sec-header">
+          <i data-lucide="key" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span class="sec-label">API Keys</span>
+        </div>
+        <div class="settings-card">
+          <div class="settings-row col">
+            <div>
+              <p style="font-size:14px;font-weight:500;">🤖 Anthropic API Key</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used for phrase translation &amp; country laws. Stored locally only — never sent to GitHub.</p>
+            </div>
+            <input id="anthropic-key-input" type="password"
+              placeholder="sk-ant-api03-..."
+              style="width:100%;padding:8px 12px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;outline:none;margin-top:8px;"
+              oninput="saveAnthropicKey(this.value)">
+            <p id="anthropic-key-status" style="font-size:11px;margin-top:4px;"></p>
+          </div>
+        </div>
+      </section>
+
       <!-- Danger Zone -->
       <section>
         <div class="sec-header">
@@ -2273,7 +2294,7 @@ function updateHomeCardLocation() {
   updatePhrasesForCountry(DEST.country);
 }
 
-const ANTHROPIC_API_KEY = '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';
+const ANTHROPIC_API_KEY = () => localStorage.getItem('utc-anthropic-key') || '';
 
 const _phraseCache = {}; // keyed by language code, e.g. 'pt', 'ja', 'fr'
 
@@ -2385,12 +2406,22 @@ async function fetchPhraseTranslations(lang, country) {
   const langName = getLangName(lang);
 
   try {
+    const apiKey = ANTHROPIC_API_KEY();
+    if (!apiKey) {
+      document.getElementById('phrases-list').innerHTML =
+        `<div style="text-align:center;color:var(--text-muted);padding:24px 0;">
+          <p style="font-size:20px;margin-bottom:8px;">🔑</p>
+          <p style="font-size:13px;margin-bottom:4px;">Anthropic API key not set</p>
+          <p style="font-size:11px;opacity:.7;">Add your key in Settings → API Keys</p>
+        </div>`;
+      return;
+    }
     console.log(`[Phrases] Fetching ${lang} for ${country}...`);
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': ANTHROPIC_API_KEY(),
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       },
@@ -2491,7 +2522,7 @@ async function fetchCountryLaws(country) {
   if (_cachedLawsByCountry[country]) return;
 
   // Unlisted country — use Anthropic API to generate travel tips
-  const ANTHROPIC_KEY = ANTHROPIC_API_KEY;
+  const ANTHROPIC_KEY = ANTHROPIC_API_KEY();
   if (!ANTHROPIC_KEY) {
     _cachedLawsByCountry[country] = {
       tipping:     'Tipping customs vary. Ask your hotel or guide for local norms.',
@@ -2763,6 +2794,7 @@ function init() {
   document.getElementById('custom-bg').value   = S.cardBg;
   document.getElementById('custom-city').value = S.cardCity;
   syncBaselines();
+  syncApiKeys();
   // Restore home location from saved settings
   if (S.homeLat) { HOME.lat = S.homeLat; HOME.lon = S.homeLon; }
   const hci = document.getElementById('home-city-input');
@@ -3095,6 +3127,34 @@ function setHomeCity(lat, lon, label, country) {
   // Recalculate distance from home
   updateDist();
   save();
+}
+
+function saveAnthropicKey(val) {
+  const key = val.trim();
+  localStorage.setItem('utc-anthropic-key', key);
+  const status = document.getElementById('anthropic-key-status');
+  if (status) {
+    if (key.startsWith('sk-ant-')) {
+      status.textContent = '✅ Key saved';
+      status.style.color = '#4ade80';
+    } else if (key.length > 0) {
+      status.textContent = '⚠️ Doesn\'t look like a valid key';
+      status.style.color = '#f59e0b';
+    } else {
+      status.textContent = '';
+    }
+  }
+}
+
+function syncApiKeys() {
+  const inp = document.getElementById('anthropic-key-input');
+  if (!inp) return;
+  const key = localStorage.getItem('utc-anthropic-key') || '';
+  inp.value = key;
+  if (key.startsWith('sk-ant-')) {
+    const status = document.getElementById('anthropic-key-status');
+    if (status) { status.textContent = '✅ Key saved'; status.style.color = '#4ade80'; }
+  }
 }
 
 function syncBaselines() {
