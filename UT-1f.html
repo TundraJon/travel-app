@@ -2273,7 +2273,7 @@ function updateHomeCardLocation() {
   updatePhrasesForCountry(DEST.country);
 }
 
-const ANTHROPIC_API_KEY = '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';
+const ANTHROPIC_API_KEY = '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';
 
 const _phraseCache = {}; // keyed by language code, e.g. 'pt', 'ja', 'fr'
 
@@ -3365,16 +3365,6 @@ function normalizeFSQ(p) {
 }
 
 async function fsqFetch(url) {
-  const isLocal = location.hostname === 'localhost' || location.protocol === 'file:' || location.protocol === 'content:';
-  if (isLocal) {
-    // Use cors.sh proxy which preserves custom headers
-    return fetch(`https://proxy.cors.sh/${url}`, {
-      headers: {
-        Authorization: FSQ_KEY,
-        'x-cors-api-key': 'temp_' + FSQ_KEY.slice(0,8),
-      }
-    });
-  }
   return fetch(url, { headers: { Authorization: FSQ_KEY } });
 }
 
@@ -3394,7 +3384,11 @@ async function fetchFSQBatch() {
       + `&fields=fsq_id,name,categories,distance,location,hours,rating,price,website,tel,geocodes`;
 
     const res  = await fsqFetch(url);
-    const data = await res.json();
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,200)}`);
+    }
+    const data = JSON.parse(text);
 
     _fsqBatch       = (data.results || []).map(normalizeFSQ);
     _fsqBatchCoords = { lat, lon };
@@ -3404,9 +3398,9 @@ async function fetchFSQBatch() {
     console.warn('FSQ batch fetch failed:', e);
     const el = document.getElementById('place-results');
     if (el) el.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--text-muted);">
-      <p style="font-size:13px;margin-bottom:8px;">⚠️ Could not load places</p>
-      <p style="font-size:11px;opacity:.7;">${e.message || 'Network error'}</p>
-      <button class="pill pill-secondary" style="margin-top:12px;font-size:12px;" onclick="fetchFSQBatch()">Retry</button>
+      <p style="font-size:13px;margin-bottom:8px;">⚠️ ${e.message || 'Network error'}</p>
+      <p style="font-size:11px;opacity:.7;margin-bottom:14px;">Proxy: proxy.cors.sh<br>URL: ${DEST.lat},${DEST.lon}</p>
+      <button class="pill pill-secondary" style="font-size:12px;" onclick="fetchFSQBatch()">Retry</button>
     </div>`;
   }
 }
