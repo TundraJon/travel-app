@@ -66,8 +66,8 @@
     }
 
     /* ── Pages ──────────────────────────────────────────── */
-    .page { display: none; flex: 1; }
-    .page.active { display: block; }
+    .page { display: none; flex: 1; overflow: hidden; }
+    .page.active { display: block; overflow-y: auto; }
 
     /* ── Bottom Nav ─────────────────────────────────────── */
     #bottom-nav {
@@ -1325,7 +1325,7 @@
           <span class="sec-label">API Keys</span>
         </div>
         <div class="settings-card">
-          <div class="settings-row col" style="border-top:1px solid var(--border);padding-top:14px;margin-top:2px;">
+          <div class="settings-row col">
             <div>
               <p style="font-size:14px;font-weight:500;">🍽️ Foursquare API Key</p>
               <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used for food &amp; place discovery. Stored locally only.</p>
@@ -1336,6 +1336,9 @@
               oninput="saveFSQKey(this.value)">
             <p id="fsq-key-status" style="font-size:11px;margin-top:4px;"></p>
           </div>
+          <div class="settings-row col" style="border-top:1px solid var(--border);padding-top:14px;margin-top:2px;">
+            <div>
+              <p style="font-size:14px;font-weight:500;">🤖 Anthropic API Key</p>
               <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">Used for phrase translation &amp; country laws. Stored locally only — never sent to GitHub.</p>
             </div>
             <input id="anthropic-key-input" type="password"
@@ -2773,6 +2776,7 @@ function init() {
   updateWelcomePill();
   renderPulseRow();
   startClock();
+  S.filter = 'local'; // reset to time-aware local filter on each load
   renderFilterBar();
   renderPlaces();
   renderSwatches();
@@ -3507,10 +3511,12 @@ async function fetchFSQBatch() {
   } catch(e) {
     console.warn('FSQ batch fetch failed:', e);
     const el = document.getElementById('place-results');
-    if (el) el.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--text-muted);">
-      <p style="font-size:13px;margin-bottom:8px;">⚠️ ${e.message || 'Network error'}</p>
-      <p style="font-size:11px;opacity:.7;margin-bottom:14px;">Proxy: proxy.cors.sh<br>URL: ${DEST.lat},${DEST.lon}</p>
-      <button class="pill pill-secondary" style="font-size:12px;" onclick="fetchFSQBatch()">Retry</button>
+    if (el) el.innerHTML = `<div style="text-align:center;padding:24px 16px;color:var(--text-muted);">
+      <p style="font-size:20px;margin-bottom:8px;">⚠️</p>
+      <p style="font-size:13px;font-weight:600;margin-bottom:6px;">${e.message || 'Network error'}</p>
+      <p style="font-size:11px;opacity:.7;margin-bottom:4px;">Check Settings → API Keys → Foursquare</p>
+      <p style="font-size:10px;opacity:.5;margin-bottom:16px;">Coords: ${DEST.lat?.toFixed(4)}, ${DEST.lon?.toFixed(4)}</p>
+      <button class="pill pill-secondary" style="font-size:12px;" onclick="fetchFSQBatch()">🔄 Retry</button>
     </div>`;
   }
 }
