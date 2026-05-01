@@ -3453,10 +3453,29 @@ function normalizeFSQ(p) {
 }
 
 async function fsqFetch(url) {
-  if (!FSQ_KEY()) {
+  const key = FSQ_KEY();
+  if (!key) {
     throw new Error('Foursquare API key not set. Add it in Settings → API Keys.');
   }
-  return fetch(url, { headers: { Authorization: FSQ_KEY() } });
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: key },
+      mode: 'cors',
+    });
+    return res;
+  } catch(e) {
+    // CORS block — Foursquare doesn't allow direct browser requests
+    // Route through a CORS-anywhere style proxy that forwards headers
+    const proxy = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    return fetch(proxy, {
+      method: 'GET',
+      headers: {
+        Authorization: key,
+        'x-requested-with': 'XMLHttpRequest',
+      }
+    });
+  }
 }
 
 async function fetchFSQBatch() {
